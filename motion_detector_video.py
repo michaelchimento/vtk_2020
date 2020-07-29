@@ -75,7 +75,8 @@ def make_video():
         print(filename)
 
 while True:
-    hour = datetime.now().hour
+    n_time = datetime.now()
+    hour = n_time.hour
     if hour >= puzzle_start and hour < puzzle_end:
         # Count changed pixels
         changedPixels = 0
@@ -134,6 +135,7 @@ while True:
 
         if takePicture:
             lastCapture = time.time()
+            print("Recording video @ {}".format(n_time))
             make_video()
     else:
         pass

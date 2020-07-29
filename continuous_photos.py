@@ -8,6 +8,7 @@ from PIL import Image
 from rpi_info import name
 from camera_settings import *
 from sigterm_exception import *
+import sys
 
 filepath = "/home/pi/APAPORIS/CURRENT/"
 moved_path = "/home/pi/APAPORIS/MOVED/"
@@ -47,8 +48,11 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 try:
     while True:
-        hour = datetime.now().hour
+        time = datetime.now()
+        hour = time.hour
         if hour >= feeder_start and hour < feeder_end:
+            print("Beginning photo-capture @ {}".format(time))
+
             dir_name = make_photos(hour)
             shutil.move(dir_name,moved_path)
         else:
