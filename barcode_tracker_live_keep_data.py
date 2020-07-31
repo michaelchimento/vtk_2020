@@ -6,6 +6,7 @@ from scipy.spatial import distance as dist
 # import the necessary packages
 from imutils.video import VideoStream
 import TagList
+from datetime import datetime
 
 
 
@@ -230,7 +231,7 @@ def get_contours(threshold_image):
 
 def contour_loop(contours, image, dst, gray,
                  maxSide, barcode_size, barcodes,
-                 flat_len, IDs, font, pt1):
+                 flat_len, IDs, font, pt1,timestamp):
     # define frame edges for checking for tags
     edge_thresh = 1
     image_shape = image.shape
@@ -250,9 +251,9 @@ def contour_loop(contours, image, dst, gray,
             area = cv2.contourArea(cnt, True)
 
             if lower_size_limit > area > upper_size_limit: # check area
-                #cv2.drawContours(image, [cnt], -1, (0,0,255), 2)
+                cv2.drawContours(image, [cnt], -1, (0,0,255), 2)
 
-            # check for contours too close to the edge to read
+                # check for contours too close to the edge to read
                 cnt_reshape = cnt.reshape((cnt_shape[0], cnt_shape[2]))
                 cnt_x = cnt_reshape[:,0]
                 cnt_y = cnt_reshape[:,1]
@@ -270,11 +271,10 @@ def contour_loop(contours, image, dst, gray,
 
                     # check if it's approximately a parallelogram
                     if 4 <= len(approx) <= 5 and lower_size_limit > poly_area > upper_size_limit and cv2.isContourConvex(approx):
-
                         periarea = peri_cnt/area
                         cv2.drawContours(image, [cnt], -1, (100,0,255), 2)
                         # check that the geometry isn't too complex
-                        if -0.5 < periarea <= 0:
+                        if -1 < periarea <= 0:
                             cv2.drawContours(image, [cnt], -1, (0,155,155), 1)
                             cnt_shape = approx.shape
                             pts = approx.reshape((cnt_shape[0], cnt_shape[-1]))
@@ -329,7 +329,7 @@ def contour_loop(contours, image, dst, gray,
                                 cv2.putText(image,str(ID),mid_centroid, font, font_scale,(255,255,255),inline_font,cv2.LINE_AA)
 
                                 #write to data file
-                                to_write_line = "{},{},{},{},{}\n".format(ID, best_value, (centroid[0]+pt1[0]), (centroid[1]+pt1[1]), vector_angle )
+                                to_write_line = "{},{},{},{},{},{}\n".format(timestamp ,ID, best_value, (centroid[0]+pt1[0]), (centroid[1]+pt1[1]), vector_angle )
                                 to_write_list.append(to_write_line)
 
     num_detections = len(to_write_list)
@@ -338,7 +338,12 @@ def contour_loop(contours, image, dst, gray,
 
     return detected_tags, num_detections
 
-def decode(tags):
+def write_csv(to_write_list, data_filepath):
+    with open(data_filepath, "a") as savefile: # open data file in write mode
+        # write column names to file
+        savefile.write(to_write_list)
+
+def decode(tags,data_filepath):
     master_list = tags.master_list
     IDs = tags.id_list
     zipped_list = list(zip(IDs, master_list))
@@ -389,6 +394,7 @@ def decode(tags):
 
     while True:
         image = cap.read()
+        timestamp=datetime.now()
         gray = get_grayscale(image, channel = 'green')
         gray = cv2.GaussianBlur(gray, (1,1), 1)
         
@@ -402,13 +408,14 @@ def decode(tags):
             try:
                 detected_tags, num_detections = contour_loop(contours, image, dst, gray,
                                      maxSide, barcode_size, barcodes,
-                                     flat_len, IDs, font, pt1)
+                                     flat_len, IDs, font, pt1,timestamp)
             except Exception as e:
                 print("error running contour loop. \n{}".format(e))
 
             else:
                 cv2.imshow('orig', image)
                 if num_detections > 0:
+                    write_csv(detected_tags, data_filepath)
                     print("num_detects:{} @ {}".format(num_detections,offset_v))
                     break
 
@@ -418,12 +425,20 @@ def decode(tags):
     cv2.destroyAllWindows()
     cap.stop()
 
+def create_csv(data_filepath):
+    with open(data_filepath, "w") as savefile: # open data file in append mode
+        # write column names to file
+        header = "time,id,id_prob,x,y,orientation\n"
+        savefile.write(header)
+
 if __name__ == "__main__":
     # Import list of barcodes
     tags = TagList.TagList()
     tags.load("master_list_outdoor.pkl")
+    data_filepath="data/{}.csv".format(datetime.now())
+    create_csv(data_filepath)
     try:
-        decode(tags)
+        decode(tags, data_filepath)
     except Exception as e:
         print(e)
         cv2.destroyAllWindows()
