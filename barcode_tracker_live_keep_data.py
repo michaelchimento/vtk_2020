@@ -398,7 +398,7 @@ def decode(tags,data_filepath):
         gray = get_grayscale(image, channel = 'green')
         gray = cv2.GaussianBlur(gray, (1,1), 1)
         
-        offset_values = [-100,-70,-50,-30,-10,-5,2,20]
+        offset_values = [0]
         for offset_v in offset_values:
             #print(offset_v)
             thresh = get_threshold(gray, block_size = 101, offset = offset_v)
